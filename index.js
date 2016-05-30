@@ -97,13 +97,17 @@ define([
 
             // "Then" state://{{{
             p.then(function(data){
-                Jade.aRender(subTarget
-                    , thenRenderer
-                    , {
-                        model: models.then,
-                        data: data,
-                    }
-                );
+                if (typeof data == "string") { // HTML data
+                    subTarget.html(data);
+                } else { // JSON data.
+                    Jade.aRender(subTarget
+                        , thenRenderer
+                        , {
+                            model: models.then,
+                            data: data,
+                        }
+                    );
+                };
             });//}}}
 
             // "Catch" state://{{{

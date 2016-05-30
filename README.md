@@ -57,15 +57,25 @@ Sample template
         catch
           h2 aJade test Error
             p=err
-    //- script (type="ajade" ...)
-    //-   You can define as much dynamic blocks as you want.
-    //-   Even recursively...
-    //-   Each one will receive two locals:
-    //-     * data: with the results of the request.
-    //-     * model: Empty object by default. But you can use
-    //-         - data-model, for a default model.
-    //-         - data-models, for {before: before_model, then: then_model,
-    //-               catch: catch_model}.
+    // script (type="ajade" ...)
+        // script (type="ajade" ...) // Even recursive...
+
+
+
+Notes
+-----
+  * You can define as much dynamic blocks as you want.
+    * Even recursively...
+  * Each one will receive two locals:
+    * data: with the results of the request.
+    * model: Empty object by default. But you can use
+      * `data-model` attribute (on the *script* tag, for a default model.
+      * `data-models`, for `{before: before_model, then: then_model, catch: catch_model}`.
+  * API url is expected to return JSON data.
+    - But, if html response received, *then-teplate* is ignored and received
+    html is inserted instead. At developing time, this is very useful, for
+    example, with html output filters of
+    [PASAR](https://www.npmjs.com/package/pasar) APIs.
 
 
 
