@@ -2,7 +2,7 @@
 // =================
 "use strict";
 define([
-    './bower_components/jade/jade',
+    '../jade/jade',
 ], function(
     Jade
 ) {
