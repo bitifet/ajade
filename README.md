@@ -41,11 +41,14 @@ Usage example:
 Sample template
 ---------------
 
+    div
+      h1 Ajade Example
+        p This part will be displayed immediately
     script(type="ajade" data-src="/path/to/some/api/function?someParameter="+someVar).
       div.fooClass(data-foo="foo attribute")
         before
           h2="aJade test"
-          p Loading...
+          p Loading dynamic contents...
         then
           h2="aJade test"
           ul
@@ -54,6 +57,15 @@ Sample template
         catch
           h2 aJade test Error
             p=err
+    //- script (type="ajade" ...)
+    //-   You can define as much dynamic blocks as you want.
+    //-   Even recursively...
+    //-   Each one will receive two locals:
+    //-     * data: with the results of the request.
+    //-     * model: Empty object by default. But you can use
+    //-         - data-model, for a default model.
+    //-         - data-models, for {before: before_model, then: then_model,
+    //-               catch: catch_model}.
 
 
 
