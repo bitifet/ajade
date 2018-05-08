@@ -1,5 +1,5 @@
-// lib/misc/ajade.js
-// =================
+// ajade.js
+// ========
 "use strict";
 define([
     '../jade/jade',
@@ -62,6 +62,7 @@ define([
             var container = $(this);
 
             var url = container.data("src");
+            var externalTemplate = container.data("then"); // Override internal if specified.
 
             // Models:
             var defaultModel = container.data("model") || {};
@@ -71,6 +72,19 @@ define([
             if (! models.catch) models.catch = defaultModel;
 
             var src = parseSrc(container.html());
+
+            var onRenderer = (//{{{
+                externalTemplate
+                ? new Promise (function(resolve, reject) {
+                    $.ajax({
+                        url: externalTemplate,
+                        success: resolve,
+                        error: reject,
+                    });
+                })
+                : Promise.resolve(src.tpl.then) // Use internal if not data-then not specified.
+            ).then(Jade.compile)
+            ;//}}}
 
             var subTarget = $(Jade.render(src.subtag));
 
@@ -84,34 +98,44 @@ define([
             container.replaceWith(subTarget);
             
             // Send async data request.//{{{
-            var p = new Promise(function(resolve, reject){
-                $.ajax({
-                    url: url,
-                    success: resolve,
-                    error: reject,
-                });
+            var onModel = new Promise(function(resolve, reject){
+                if (! url) {
+                    resolve({});
+                } else {
+                    $.ajax({
+                        url: url,
+                        success: resolve,
+                        error: reject,
+                    });
+                };
             });//}}}
 
-            // thenTpl precompilation:
-            var thenRenderer = Jade.compile(src.tpl.then);
-
-            // "Then" state://{{{
-            p.then(function(data){
+            Promise.all([
+                onRenderer
+                , onModel
+            ])
+            .then(function(elements){ // "Then" state://{{{
+                var theRenderer = elements[0];
+                var data = elements[1];
                 if (typeof data == "string") { // HTML data
                     subTarget.html(data);
                 } else { // JSON data.
                     Jade.aRender(subTarget
-                        , thenRenderer
-                        , {
-                            model: models.then,
-                            data: data,
-                        }
+                        , theRenderer
+                        , $.extend(
+                            {}
+                            , model
+                            , models.then
+                            , {
+                                ///model: $.extend({}, model, models.then),
+                                model: models.then,
+                                data: data,
+                            }
+                        )
                     );
                 };
-            });//}}}
-
-            // "Catch" state://{{{
-            p.catch(function(err){
+            })//}}}
+            .catch(function(err){ // "Catch" state://{{{
                 subTarget.html(
                     Jade.render(src.tpl.catch, {
                         err: err,
@@ -119,11 +143,6 @@ define([
                     })
                 );
             });//}}}
-
-
-            //*/
-
-
 
         });
 
