@@ -28,7 +28,7 @@ Usage example:
 
         var targetPage = $(".someSelector"); // jQuery
 
-        aJade.aRender(
+        var P = aJade.aRender( // Returns promise.
             targetPage
             , locationTemplate
             , {lid: lid}
@@ -76,6 +76,11 @@ Notes
     html is inserted instead. At developing time, this is very useful, for
     example, with html output filters of
     [PASAR](https://www.npmjs.com/package/pasar) APIs.
+  * From version 0.1.0, "then" subtemplate can be loaded asynchronously by
+    specified its url in data-then attribute.
+  * From version 0.1.1 aRender() returns a promise which resolves when whole
+    template tree is rendered (not necessary having successed on every
+    subtemplate).
 
 
 

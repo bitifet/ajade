@@ -57,6 +57,7 @@ define([
         if (typeof tpl != "function") tpl = tpl(model); // Accept not yet compiled templates.
         target.html(tpl(model)); // Render master template.
 
+        var tokens = [];
 
         $("script[type=ajade]", target).each(function(){
             var container = $(this);
@@ -110,7 +111,7 @@ define([
                 };
             });//}}}
 
-            Promise.all([
+            var renderProcess = Promise.all([
                 onRenderer
                 , onModel
             ])
@@ -120,14 +121,13 @@ define([
                 if (typeof data == "string") { // HTML data
                     subTarget.html(data);
                 } else { // JSON data.
-                    Jade.aRender(subTarget
+                    return Jade.aRender(subTarget
                         , theRenderer
                         , $.extend(
                             {}
                             , model
                             , models.then
                             , {
-                                ///model: $.extend({}, model, models.then),
                                 model: models.then,
                                 data: data,
                             }
@@ -144,7 +144,14 @@ define([
                 );
             });//}}}
 
+            tokens.push(
+                renderProcess.catch(x=>Promise.resolve())
+            );
+
         });
+
+        // Return promise that resolves when all render processes are fullfilled.
+        return Promise.all(tokens).then(foo=>true);
 
     };
 
