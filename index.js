@@ -55,103 +55,116 @@ define([
         model
     ) {
         if (typeof tpl != "function") tpl = Jade.compile(tpl); // Accept not yet compiled templates.
-        target.html(tpl(model)); // Render master template.
 
-        var tokens = [];
 
-        $("script[type=ajade]", target).each(function(){
-            var container = $(this);
+        return new Promise(function(resolveRender, reject) {
 
-            var url = container.data("src");
-            var externalTemplate = container.data("then"); // Override internal if specified.
+            target.html( // Render master template.
+                tpl(model)
+            ).ready(function() {
 
-            // Models:
-            var defaultModel = container.data("model") || {};
-            var models = container.data("models") || {};
-            if (! models.before) models.before = defaultModel;
-            if (! models.then) models.then = defaultModel;
-            if (! models.catch) models.catch = defaultModel;
+                var tokens = [];
 
-            var src = parseSrc(container.html());
+                $("script[type=ajade]", target).each(function(){ // Pick for subtemplates//{{{
+                    var container = $(this);
 
-            var onRenderer = (//{{{
-                externalTemplate
-                ? new Promise (function(resolve, reject) {
-                    $.ajax({
-                        url: externalTemplate,
-                        success: resolve,
-                        error: reject,
-                    });
-                })
-                : Promise.resolve(src.tpl.then) // Use internal if not data-then not specified.
-            ).then(Jade.compile)
-            ;//}}}
+                    var url = container.data("src");
+                    var externalTemplate = container.data("then"); // Override internal if specified.
 
-            var subTarget = $(Jade.render(src.subtag));
+                    // Models:
+                    var defaultModel = container.data("model") || {};
+                    var models = container.data("models") || {};
+                    if (! models.before) models.before = defaultModel;
+                    if (! models.then) models.then = defaultModel;
+                    if (! models.catch) models.catch = defaultModel;
 
-            // "Before" state://{{{
-            subTarget.html(Jade.render(src.tpl.before, { // Direct render.
-                model: models.before,
-                data: {},
-            }));//}}}
+                    var src = parseSrc(container.html());
 
-            // Oringinal container replacement:
-            container.replaceWith(subTarget);
-            
-            // Send async data request.//{{{
-            var onModel = new Promise(function(resolve, reject){
-                if (! url) {
-                    resolve({});
-                } else {
-                    $.ajax({
-                        url: url,
-                        success: resolve,
-                        error: reject,
-                    });
-                };
-            });//}}}
+                    var onRenderer = (//{{{
+                        externalTemplate
+                        ? new Promise (function(resolve, reject) {
+                            $.ajax({
+                                url: externalTemplate,
+                                success: resolve,
+                                error: reject,
+                            });
+                        })
+                        : Promise.resolve(src.tpl.then) // Use internal if not data-then not specified.
+                    ).then(Jade.compile)
+                    ;//}}}
 
-            var renderProcess = Promise.all([
-                onRenderer
-                , onModel
-            ])
-            .then(function(elements){ // "Then" state://{{{
-                var theRenderer = elements[0];
-                var data = elements[1];
-                if (typeof data == "string") { // HTML data
-                    subTarget.html(data);
-                } else { // JSON data.
-                    return Jade.aRender(subTarget
-                        , theRenderer
-                        , $.extend(
-                            {}
-                            , model
-                            , models.then
-                            , {
-                                model: models.then,
-                                data: data,
-                            }
-                        )
+                    var subTarget = $(Jade.render(src.subtag));
+
+                    // "Before" state://{{{
+                    subTarget.html(Jade.render(src.tpl.before, { // Direct render.
+                        model: models.before,
+                        data: {},
+                    }));//}}}
+
+                    // Oringinal container replacement:
+                    container.replaceWith(subTarget);
+
+                    // Send async data request.//{{{
+                    var onModel = new Promise(function(resolve, reject){
+                        if (! url) {
+                            resolve({});
+                        } else {
+                            $.ajax({
+                                url: url,
+                                success: resolve,
+                                error: reject,
+                            });
+                        };
+                    });//}}}
+
+                    var renderProcess = Promise.all([
+                        onRenderer
+                        , onModel
+                    ])
+                    .then(function(elements){ // "Then" state://{{{
+                        var theRenderer = elements[0];
+                        var data = elements[1];
+                        if (typeof data == "string") { // HTML data
+                            return new Promise(function (resolve, reject) {
+                                subTarget.html(data)
+                                    .ready(resolve)
+                                ;
+                            });
+                        } else { // JSON data.
+                            return Jade.aRender(subTarget
+                                , theRenderer
+                                , $.extend(
+                                    {}
+                                    , model
+                                    , models.then
+                                    , {
+                                        model: models.then,
+                                        data: data,
+                                    }
+                                )
+                            );
+                        };
+                    })//}}}
+                    .catch(function(err){ // "Catch" state://{{{
+                        subTarget.html(
+                            Jade.render(src.tpl.catch, {
+                                err: err,
+                                model: models.catch,
+                            })
+                        );
+                    });//}}}
+
+                    tokens.push(
+                        renderProcess.catch(x=>Promise.resolve())
                     );
-                };
-            })//}}}
-            .catch(function(err){ // "Catch" state://{{{
-                subTarget.html(
-                    Jade.render(src.tpl.catch, {
-                        err: err,
-                        model: models.catch,
-                    })
-                );
-            });//}}}
 
-            tokens.push(
-                renderProcess.catch(x=>Promise.resolve())
-            );
+                });//}}}
 
+                // Return promise that resolves when all render processes are fullfilled.
+                resolveRender (Promise.all(tokens).then(foo=>true));
+
+            });
         });
-
-        // Return promise that resolves when all render processes are fullfilled.
-        return Promise.all(tokens).then(foo=>true);
 
     };
 
