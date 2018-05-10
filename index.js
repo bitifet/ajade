@@ -7,6 +7,24 @@ define([
     Jade
 ) {
 
+    var readyTriggerName = "aJadeReady";
+
+    var readyTrigger = (function(){
+        var trigTpl = Jade.compile([
+            "",
+            "script(id=templateId).",
+            "  $(document.currentScript).trigger('"+readyTriggerName+"', '#{templateId}');",
+        ].join("\n"));
+        return function renderTrigger(tplId) {
+            return trigTpl({templateId: tplId});
+        };
+    })();
+
+    function randomId() {
+        return Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2);
+    };
+
+
     function parseSrc(src) {//{{{
         var subtag = src.match(/^.+$/m)[0];
         src = src.substring(subtag.length+1);
@@ -56,11 +74,14 @@ define([
     ) {
         if (typeof tpl != "function") tpl = Jade.compile(tpl); // Accept not yet compiled templates.
 
+        var tplId = randomId();
+
 
         return new Promise(function(resolveRender, reject) {
 
             target.html( // Render master template.
                 tpl(model)
+                + readyTrigger(tplId)
             ).ready(function() {
 
                 var tokens = [];
@@ -161,9 +182,21 @@ define([
                 });//}}}
 
                 // Return promise that resolves when all render processes are fullfilled.
-                resolveRender (Promise.all(tokens).then(foo=>true));
+                resolveRender (Promise.all(tokens).then(foo=>alert("Prematurely resolving "+tplId)));
 
             });
+
+            var itv = setInterval(function(){
+                if ($("script#"+tplId, target).length >= 1) {
+                    clearInterval(itv);
+                    alert ("Rendered " + tplId);
+                };
+            }, 10);
+
+
+            // target.on(readyTriggerName, function (ev, tid) {
+            //     alert ("Rendered " + tid);
+            // });
         });
 
     };
