@@ -83,11 +83,13 @@ define([
     };//}}}
 
     Jade.aRender = function (
-        target,
-        tpl,
-        model
+        target
+        , tpl
+        , model
+        , onRendered
     ) {
         if (typeof tpl != "function") tpl = Jade.compile(tpl); // Accept not yet compiled templates.
+        if (typeof onRendered != "function") onRendered = function(){}; // Do Nothing.
 
         return new Promise(function(resolveRender, reject) {
 
@@ -175,7 +177,10 @@ define([
                                     }
                                 )
                             ).then(function showIt(target) {
-                                beforeTarget.replaceWith(thenTarget);
+                                Promise.resolve(onRendered(false, target)) // Apply onRendered callback.
+                                .then(function() { // Show
+                                    beforeTarget.replaceWith(thenTarget);
+                                });
                                 return target;
                             });
                         };
@@ -188,7 +193,10 @@ define([
                                 model: models.catch,
                             })
                         );
-                        beforeTarget.replaceWith(catchTarget);
+                        Promise.resolve(onRendered(err, catchTarget)) // Apply onRendered callback (error state).
+                        .then(function() { // Show error template:
+                            beforeTarget.replaceWith(catchTarget);
+                        });
                     });//}}}
 
                     tokens.push(
