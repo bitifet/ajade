@@ -8,6 +8,7 @@ define([
 ) {
 
 
+
     var htmlInject = (function(){//{{{
 
         var trigTpl = Jade.compile("\nscript(id=templateId)");
@@ -91,7 +92,10 @@ define([
         if (typeof tpl != "function") tpl = Jade.compile(tpl); // Accept not yet compiled templates.
         if (typeof onRendered != "function") onRendered = function(){}; // Do Nothing.
 
+
         return new Promise(function(resolveRender, reject) {
+
+
 
             htmlInject(
                 target
@@ -176,12 +180,9 @@ define([
                                         data: data,
                                     }
                                 )
-                            ).then(function showIt(target) {
-                                Promise.resolve(onRendered(false, target)) // Apply onRendered callback.
-                                .then(function() { // Show
-                                    beforeTarget.replaceWith(thenTarget);
-                                });
-                                return target;
+                            ).then(function showIt() {
+                                beforeTarget.replaceWith(thenTarget);
+                                return true;
                             });
                         };
                     })//}}}
@@ -193,10 +194,8 @@ define([
                                 model: models.catch,
                             })
                         );
-                        Promise.resolve(onRendered(err, catchTarget)) // Apply onRendered callback (error state).
-                        .then(function() { // Show error template:
-                            beforeTarget.replaceWith(catchTarget);
-                        });
+                        beforeTarget.replaceWith(catchTarget);
+                        return false;
                     });//}}}
 
                     tokens.push(
@@ -206,7 +205,16 @@ define([
                 });//}}}
 
                 // Return promise that resolves when all render processes are fullfilled.
-                resolveRender (Promise.all(tokens).then(foo=>target));
+                resolveRender (Promise.all(tokens).then(function(tok){
+
+                    ///var err = tok.filter(x=>x===false).length > 0;
+
+                    Promise.resolve(onRendered(false, target))
+
+
+                    return target;
+
+                }));
 
             });
 
