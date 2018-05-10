@@ -7,23 +7,38 @@ define([
     Jade
 ) {
 
-    var readyTriggerName = "aJadeReady";
 
-    var readyTrigger = (function(){
-        var trigTpl = Jade.compile([
-            "",
-            "script(id=templateId).",
-            "  $(document.currentScript).trigger('"+readyTriggerName+"', '#{templateId}');",
-        ].join("\n"));
-        return function renderTrigger(tplId) {
+    var htmlInject = (function(){//{{{
+
+        var trigTpl = Jade.compile("\nscript(id=templateId)");
+
+        function readyTrigger(tplId) {
             return trigTpl({templateId: tplId});
         };
-    })();
 
-    function randomId() {
-        return Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2);
-    };
+        function randomId() {
+            return "aJadeId_"+Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2);
+        };
 
+        return function htmlInject (target, html) {
+
+            var renderId = randomId();
+            target.html(
+                html
+                +readyTrigger(renderId)
+            );
+            return new Promise(function(resolve, reject){
+                var itv = setInterval(function(){
+                    if ($("script#"+renderId, target).length >= 1) {
+                        clearInterval(itv);
+                        resolve(target);
+                    };
+                }, 1000);
+            });
+
+        };
+
+    })();//}}}
 
     function parseSrc(src) {//{{{
         var subtag = src.match(/^.+$/m)[0];
@@ -74,15 +89,12 @@ define([
     ) {
         if (typeof tpl != "function") tpl = Jade.compile(tpl); // Accept not yet compiled templates.
 
-        var tplId = randomId();
-
-
         return new Promise(function(resolveRender, reject) {
 
-            target.html( // Render master template.
-                tpl(model)
-                + readyTrigger(tplId)
-            ).ready(function() {
+            htmlInject(
+                target
+                , tpl(model) // Render master template.
+            ).then(function() {
 
                 var tokens = [];
 
@@ -114,16 +126,19 @@ define([
                     ).then(Jade.compile)
                     ;//}}}
 
-                    var subTarget = $(Jade.render(src.subtag));
+                    var beforeTarget = $(Jade.render(src.subtag));
 
                     // "Before" state://{{{
-                    subTarget.html(Jade.render(src.tpl.before, { // Direct render.
+                    beforeTarget.html(Jade.render(src.tpl.before, { // Direct render.
                         model: models.before,
                         data: {},
                     }));//}}}
 
                     // Oringinal container replacement:
-                    container.replaceWith(subTarget);
+                    container.replaceWith(beforeTarget);
+
+
+                    var thenTarget = $(Jade.render(src.subtag));
 
                     // Send async data request.//{{{
                     var onModel = new Promise(function(resolve, reject){
@@ -146,13 +161,9 @@ define([
                         var theRenderer = elements[0];
                         var data = elements[1];
                         if (typeof data == "string") { // HTML data
-                            return new Promise(function (resolve, reject) {
-                                subTarget.html(data)
-                                    .ready(resolve)
-                                ;
-                            });
+                            return htmlInject(thenTarget, data);
                         } else { // JSON data.
-                            return Jade.aRender(subTarget
+                            return Jade.aRender(thenTarget
                                 , theRenderer
                                 , $.extend(
                                     {}
@@ -163,16 +174,21 @@ define([
                                         data: data,
                                     }
                                 )
-                            );
+                            ).then(function showIt(target) {
+                                beforeTarget.replaceWith(thenTarget);
+                                return target;
+                            });
                         };
                     })//}}}
                     .catch(function(err){ // "Catch" state://{{{
-                        subTarget.html(
+                        var catchTarget = $(Jade.render(src.subtag));
+                        catchTarget.html(
                             Jade.render(src.tpl.catch, {
                                 err: err,
                                 model: models.catch,
                             })
                         );
+                        beforeTarget.replaceWith(catchTarget);
                     });//}}}
 
                     tokens.push(
@@ -182,21 +198,10 @@ define([
                 });//}}}
 
                 // Return promise that resolves when all render processes are fullfilled.
-                resolveRender (Promise.all(tokens).then(foo=>alert("Prematurely resolving "+tplId)));
+                resolveRender (Promise.all(tokens).then(foo=>target));
 
             });
 
-            var itv = setInterval(function(){
-                if ($("script#"+tplId, target).length >= 1) {
-                    clearInterval(itv);
-                    alert ("Rendered " + tplId);
-                };
-            }, 10);
-
-
-            // target.on(readyTriggerName, function (ev, tid) {
-            //     alert ("Rendered " + tid);
-            // });
         });
 
     };
