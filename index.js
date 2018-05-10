@@ -54,7 +54,7 @@ define([
         tpl,
         model
     ) {
-        if (typeof tpl != "function") tpl = tpl(model); // Accept not yet compiled templates.
+        if (typeof tpl != "function") tpl = Jade.compile(tpl); // Accept not yet compiled templates.
         target.html(tpl(model)); // Render master template.
 
         var tokens = [];
