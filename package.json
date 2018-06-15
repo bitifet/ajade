@@ -1,4 +1,10 @@
 {
+  "name": "ajade",
+  "description": "Asynchronous-Rendering Jade Template Engine.",
+  "main": "index.js",
+  "author": "Joan Miquel Torres<joanmi@bitifet.net>",
+  "license": "GPL-3.0",
+  "private": false,
   "dependencies": {
     "@bower_components/jade": "visionmedia/jade#^1.11.0"
   },
@@ -7,5 +13,6 @@
   },
   "scripts": {
     "postinstall": "node -e \"try { require('fs').symlinkSync(require('path').resolve('node_modules/@bower_components'), 'bower_components', 'junction') } catch (e) { }\""
-  }
+  },
+  "version": "0.1.5"
 }
